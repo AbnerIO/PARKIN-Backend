@@ -55,36 +55,95 @@ class Spot(db.Model):
     def to_dict(self):
         return {column.name: getattr(self, column.name) for column in self.__table__.columns}
 
-#with app.app_context():
+
+# with app.app_context():
 #    db.create_all()
+# Routes Funciones
+@app.route("/solicitar_spot/<int:spot_id>")
+def solicitar_spot(spot_id):
+    if API_KEY == request.args.get("api_key"):
+        vehicle_type = request.args.get("vehicle_type")
+        if vehicle_type == "car":
+            spot = db.session.query(Spot).filter_by(id=spot_id).first()
+            spaces = int(request.args.get("spaces"))
+            if spot:
+                if spot.car_spaces_availables >= spaces:
+                    spot.car_spaces_availables = spot.car_spaces_availables - spaces
+                    db.session.commit()
+                    return jsonify(response={"response": "Spots solicitados correctamnete"}), 200
+                else:
+                    return jsonify(error={"error": "No hay suficientes espacios"}), 400
+        elif vehicle_type == "bicycle":
+            spot = db.session.query(Spot).filter_by(id=spot_id).first()
+            spaces = int(request.args.get("spaces"))
+            if spot:
+                if spot.bicycle_spaces_availables >= spaces:
+                    spot.bicycle_spaces_availables = spot.bicycle_spaces_availables - spaces
+                    db.session.commit()
+                    return jsonify(response={"response": "Spots solicitados correctamnete"}), 200
+                else:
+                    return jsonify(error={"error": "No hay suficientes espacios"}), 400
+        else:
+            return jsonify(error={"error": "Ese vehiculo no existe. (car/bicycle)"}), 400
+    else:
+        return jsonify(error={"error": "No hay un spot con esa id"}), 400
 
 
-# Routes spots general
+@app.route("/devolver_spot/<int:spot_id>")
+def devolver_spot(spot_id):
+    if API_KEY == request.args.get("api_key"):
+        spot = db.session.query(Spot).filter_by(id=spot_id).first()
+        spaces = int(request.args.get("spaces"))
+        vehicle_type = request.args.get("vehicle_type")
+        if spot:
+            if vehicle_type == "car":
+                if spot.car_spaces >= (spot.car_spaces_availables + spaces):
+                    spot.car_spaces_availables = spot.car_spaces_availables + spaces
+                    db.session.commit()
+                    return jsonify(response={"response": "Spots devueltos correctamente"}), 200
+                else:
+                    return jsonify(error={"error": "Ese spot no puede tener más espacios que devolver, estaría "
+                                                   "sobrepasando su límite.)"}), 400
+            elif vehicle_type == "bicycle":
+                if spot.bicycle_spaces >= (spot.bicycle_spaces_availables + spaces):
+                    spot.bicycle_spaces_availables = spot.bicycle_spaces_availables + spaces
+                    db.session.commit()
+                    return jsonify(response={"response": "Spots devueltos correctamente bicicletas"}), 200
+                else:
+                    return jsonify(error={
+                        "error": "Ese spot no puede tener más espacios que devolver, estaría sobrepasando su límite. "
+                                 "bicicletas)"}), 400
+        else:
+            return jsonify(error={"error": "No hay un spot con esa id"}), 400
+    # Routes spots general
+
+
 @app.route("/spots/get", methods=["GET"])
 def get_spots():
     if API_KEY == request.args.get("api_key"):
         spots = db.session.query(Spot).all()
         spots = [spot.to_dict() for spot in spots]
-        return jsonify(spots = spots), 200
+        return jsonify(spots=spots), 200
     else:
         return jsonify(error={"error": "API KEY inválida"}), 200
+
 
 @app.route("/spots/get/<int:spot_id>", methods=["GET"])
 def get_spot(spot_id):
     if API_KEY == request.args.get("api_key"):
         spot = db.session.query(Spot).filter_by(id=spot_id).first()
         if spot:
-            return jsonify(spot = spot.to_dict()), 200
+            return jsonify(spot=spot.to_dict()), 200
         else:
             return jsonify(error={"error": "No hay un spot con esa id"}), 400
     else:
         return jsonify(error={"error": "API KEY inválida"}), 401
 
+
 @app.route("/spots/add", methods=["POST"])
 def add_spot():
     if API_KEY == request.args.get("api_key"):
         if request.method == "POST":
-
             new_spot = Spot(
                 owner_id=request.args.get("owner_id"),
                 city=request.args.get("city"),
@@ -98,19 +157,21 @@ def add_spot():
                 map_url=request.args.get("map_url"),
                 car_spaces_availables=request.args.get("car_spaces"),
                 bicycle_spaces_availables=request.args.get("bicycle_spaces"),
-                bicycle_space_rent=request.args.get("bicycle_space_rent"), #USD
-                car_space_rent=request.args.get("car_space_rent") #USD
+                bicycle_space_rent=request.args.get("bicycle_space_rent"),  # USD
+                car_space_rent=request.args.get("car_space_rent")  # USD
             )
             db.session.add(new_spot)
             db.session.commit()
             return jsonify(response={"success": "Spot añadido"}), 200
     else:
         return jsonify(error={"error": "API KEY inválida"}), 401
+
+
 # Routes users general
 @app.route("/users/get/<int:user_id>")
 def get_user(user_id):
     if API_KEY == request.args.get("api_key"):
-        user = db.session.query(User).filter_by(id = user_id).first()
+        user = db.session.query(User).filter_by(id=user_id).first()
         if user:
             user = user.to_dict()
             return jsonify(user=user), 200
@@ -118,6 +179,7 @@ def get_user(user_id):
             return jsonify(error={"error": "No hay usuario con ese id"}), 401
     else:
         return jsonify(error={"error": "API KEY inválida"}), 401
+
 
 @app.route("/users/add", methods=["POST"])
 def add_user():
@@ -194,7 +256,7 @@ def login():
 
 
 @app.route("/logout")
-@login_required # Se requiere que el usuario este dentro del sistema para sacarlo
+@login_required  # Se requiere que el usuario este dentro del sistema para sacarlo
 def logout():
     logout_user()
     return jsonify(response={"success": "Desloggeado correctamente"}), 200
