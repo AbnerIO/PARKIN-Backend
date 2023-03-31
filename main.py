@@ -59,7 +59,7 @@ class Spot(db.Model):
 # with app.app_context():
 #    db.create_all()
 # Routes Funciones
-@app.route("/solicitar_spot/<int:spot_id>")
+@app.route("/solicitar_spot/<int:spot_id>", methods=["PATCH"])
 def solicitar_spot(spot_id):
     if API_KEY == request.args.get("api_key"):
         vehicle_type = request.args.get("vehicle_type")
@@ -89,7 +89,7 @@ def solicitar_spot(spot_id):
         return jsonify(error={"error": "No hay un spot con esa id"}), 400
 
 
-@app.route("/devolver_spot/<int:spot_id>")
+@app.route("/devolver_spot/<int:spot_id>", methods = ["PATCH"])
 def devolver_spot(spot_id):
     if API_KEY == request.args.get("api_key"):
         spot = db.session.query(Spot).filter_by(id=spot_id).first()
