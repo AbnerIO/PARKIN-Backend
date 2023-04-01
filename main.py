@@ -89,7 +89,7 @@ def solicitar_spot(spot_id):
         return jsonify(error={"error": "No hay un spot con esa id"}), 400
 
 
-@app.route("/devolver_spot/<int:spot_id>", methods = ["PATCH"])
+@app.route("/devolver_spot/<int:spot_id>", methods=["PATCH"])
 def devolver_spot(spot_id):
     if API_KEY == request.args.get("api_key"):
         spot = db.session.query(Spot).filter_by(id=spot_id).first()
@@ -211,9 +211,11 @@ def add_user():
 def delete_user():
     if API_KEY == request.args.get("api_key"):
         if request.method == "DELETE":
-            user_id = request.args.get("id")
-            db.session.query(User).delete(user_id)
-            db.session.commit()
+            user_id = request.args.get('user_id')
+            user = db.session.query(User).filter_by(id=user_id).first()
+            if user:
+                db.session.delete(user)
+                db.session.commit()
             return jsonify(response={"success": "Usuario eliminado."}), 200
         else:
             return jsonify(error={"error": "Error en la petición."}), 200
