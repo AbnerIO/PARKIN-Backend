@@ -28,6 +28,7 @@ class User(UserMixin, db.Model):
     name = db.Column(db.String(100), unique=True)
     type = db.Column(db.String(10), nullable=False)  # Client/Admin/Owner
     password = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(100), nullable=False)
     is_verified = db.Column(db.Boolean, nullable=False, default=False)
 
     def to_dict(self):
