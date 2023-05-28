@@ -119,20 +119,20 @@ def devolver_spot(spot_id):
     # Routes spots general
 
 
-@app.route("/spots/get", methods=["GET"])
+@app.route("/spots/get/", methods=["GET"])
 def get_spots():
     spots = db.session.query(Spot).all()
     spots = [spot.to_dict() for spot in spots]
     return jsonify(spots=spots), 200
 
 
-@app.route("/spots/get/<int:spot_id>", methods=["GET"])
-def get_spot(spot_id):
-    spot = db.session.query(Spot).filter_by(id=spot_id).first()
-    if spot:
-        return jsonify(spot=spot.to_dict()), 200
+@app.route("/spots/get/<int:owner_id>", methods=["GET"])
+def get_spot(owner_id):
+    spots = db.session.query(Spot).filter_by(owner_id=owner_id).all()
+    if spots:
+        return jsonify([spot.to_dict() for spot in spots]), 200
     else:
-        return jsonify(error={"error": "No hay un spot con esa id"}), 400
+        return jsonify(error={"error": "No tiene spots"}), 400
 
 
 # Routes users general
