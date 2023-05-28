@@ -3,6 +3,7 @@ from flask import Flask, request, jsonify, send_from_directory
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
+import requests
 
 app = Flask(__name__)
 
@@ -26,10 +27,11 @@ class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(100), unique=True)
     name = db.Column(db.String(100), unique=True)
-    type = db.Column(db.String(10), nullable=False)  # Client/Admin/Owner
+    type = db.Column(db.String(10), nullable=False)  # Client/Owner
     password = db.Column(db.String(100), nullable=False)
     phone = db.Column(db.String(100), nullable=False)
     is_verified = db.Column(db.Boolean, nullable=False, default=False)
+    img_url = db.Column(db.String(100), default="https://unsplash.com/es/fotos/NE0XGVKTmcA")
 
     def to_dict(self):
         return {column.name: getattr(self, column.name) for column in self.__table__.columns}
@@ -51,14 +53,15 @@ class Spot(db.Model):
     bicycle_spaces_availables = db.Column(db.Integer, nullable=False)
     bicycle_space_rent = db.Column(db.Float, nullable=False)
     car_space_rent = db.Column(db.Float, nullable=False)
-    map_url = db.Column(db.String(100))
+    map_url = db.Column(db.String(100), default="")
+    img_url = db.Column(db.String(100), default="https://unsplash.com/es/fotos/_HqHX3LBN18")
 
     def to_dict(self):
         return {column.name: getattr(self, column.name) for column in self.__table__.columns}
 
 
 # with app.app_context():
-# db.create_all()
+#    db.create_all()
 # Routes Funciones
 @app.route("/solicitar_spot/<int:spot_id>", methods=["PATCH"])
 def solicitar_spot(spot_id):
@@ -130,30 +133,6 @@ def get_spot(spot_id):
         return jsonify(spot=spot.to_dict()), 200
     else:
         return jsonify(error={"error": "No hay un spot con esa id"}), 400
-
-
-@app.route("/spots/add", methods=["POST"])
-def add_spot():
-    if request.method == "POST":
-        new_spot = Spot(
-            owner_id=request.form.get("owner_id"),
-            city=request.form.get("city"),
-            state=request.form.get("state"),
-            country=request.form.get("country"),
-            street=request.form.get("street"),
-            street_number=request.form.get("street_number"),
-            neighborhood=request.form.get("neighborhood"),
-            car_spaces=request.form.get("car_spaces"),
-            bicycle_spaces=request.form.get("bicycle_spaces"),
-            map_url=request.form.get("map_url"),
-            car_spaces_availables=request.form.get("car_spaces"),
-            bicycle_spaces_availables=request.form.get("bicycle_spaces"),
-            bicycle_space_rent=request.form.get("bicycle_space_rent"),  # USD
-            car_space_rent=request.form.get("car_space_rent")  # USD
-        )
-        db.session.add(new_spot)
-        db.session.commit()
-        return jsonify(response={"success": "Spot añadido"}), 200
 
 
 # Routes users general
@@ -241,6 +220,58 @@ def login():
 def logout():
     logout_user()
     return jsonify(response={"success": "Desloggeado correctamente"}), 200
+
+
+@app.route("/spots/add", methods=["POST"])
+def add_spot():
+    calle = request.form.get("calle")
+    numero = request.form.get("numero")
+    colonia = request.form.get("colonia")
+    ciudad = request.form.get("ciudad")
+    estado = request.form.get("estado")
+    espacios_coches = request.form.get("espacios_coches")
+    espacios_bicicletas = request.form.get("espacios_bicicletas")
+    precio_coche = request.form.get("precio_coche")
+    precio_bicicleta = request.form.get("precio_bicicleta")
+    url = f"https://nominatim.openstreetmap.org/search?q={calle} {numero},{colonia},{ciudad},{estado},México&format=json"
+    response = requests.get(url)
+    if response.status_code == 200:
+        # La petición fue exitosa
+        data = response.json()
+        # Trabajar con los datos obtenidos
+        if len(data)>0:
+            lat = data[0]["lat"]
+            lon = data[0]["lon"]
+            direccion = data[0]["display_name"]
+            partes = direccion.split(", ", 1)  # Dividir en dos partes: antes de la primera coma y después de ella
+            nueva_direccion = f"{partes[0]} {numero}, {partes[1]}"  # Concatenar la primera parte, la calle y la segunda parte
+            map_url = f"https://www.google.com/maps/search/{nueva_direccion}"
+            print(lat, lon, nueva_direccion)
+            # Guardar spot
+            new_spot = Spot(
+                owner_id=1,
+                city=ciudad,
+                state=estado,
+                country="México",
+                street=calle,
+                street_number=numero,
+                neighborhood=colonia,
+                car_spaces=espacios_coches,
+                bicycle_spaces=int(espacios_bicicletas),
+                car_spaces_availables=espacios_coches,
+                bicycle_spaces_availables=espacios_bicicletas,
+                car_space_rent=precio_coche,
+                bicycle_space_rent=precio_bicicleta,
+                map_url=map_url
+
+            )
+            db.session.add(new_spot)
+            db.session.commit()
+            return jsonify(response={"success": f"Spot añadido"}), 200
+        else:
+            return jsonify({"error": "Espacio inutilizable por diversas razones."}), 400
+    else:
+        return jsonify({"error": response.text}), 400
 
 
 if __name__ == '__main__':
