@@ -275,4 +275,4 @@ def add_spot():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='192.168.0.8', port=5000)
+    app.run()
