@@ -1,8 +1,9 @@
 # Nota: request.args.get tiene que ser request.form.get para okHTTP (Kotlin)
+import requests
 from flask import Flask, request, jsonify, send_from_directory
-from werkzeug.security import generate_password_hash, check_password_hash
-from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 
@@ -271,6 +272,17 @@ def add_spot():
             return jsonify({"error": "Espacio inutilizable por diversas razones."}), 400
     else:
         return jsonify({"error": response.text}), 400
+
+# Nuevos
+@app.route("/spots/get/<string:estado>/<string:ciudad>/<string:colonia>")
+def get_spots_by_caracteristics(estado, ciudad, colonia):
+    spots = db.session.query(Spot).filter_by(neighborhood=colonia).all()
+    return jsonify({"spots":[spot.to_dict() for spot in spots]})
+
+@app.route("/spots/<int:id>")
+def spot_por_id(id):
+    spot = db.session.query(Spot).filter_by(id=id).first()
+    return jsonify(spot.to_dict())
 
 
 if __name__ == '__main__':
