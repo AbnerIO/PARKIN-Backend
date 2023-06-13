@@ -129,7 +129,7 @@ def get_spots():
 def get_spot(owner_id):
     spots = db.session.query(Spot).filter_by(owner_id=owner_id).all()
     if spots:
-        return jsonify([spot.to_dict() for spot in spots]), 200
+        return jsonify({"spots"=[spot.to_dict() for spot in spots]}), 200
     else:
         return jsonify(error={"error": "No tiene spots"}), 400
 
